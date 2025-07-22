@@ -74,6 +74,12 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
+// Add SignalR
+builder.Services.AddSignalR();
+
+// Add Authorization Service
+builder.Services.AddScoped<TodoApi.Services.IAuthorizationService, TodoApi.Services.AuthorizationService>();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -87,6 +93,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapHub<TodoApi.Hubs.TodoHub>("/todohub");
 
 app.Run();
 

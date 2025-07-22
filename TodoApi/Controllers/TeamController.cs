@@ -1,0 +1,146 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using TodoApi.Data;
+using TodoApi.DTOs;
+using TodoApi.Models;
+using TodoApi.Services;
+using AutoMapper;
+
+namespace TodoApi.Controllers
+{
+    [ApiController]
+    [Route("api/[controller]")]
+    [Authorize]
+    public class TeamController : ControllerBase
+    {
+        private readonly AppDbContext _context;
+        private readonly IMapper _mapper;
+        private readonly TodoApi.Services.IAuthorizationService _authService;
+
+        public TeamController(AppDbContext context, IMapper mapper, TodoApi.Services.IAuthorizationService authService)
+        {
+            _context = context;
+            _mapper = mapper;
+            _authService = authService;
+        }
+
+        [HttpGet]
+        public async Task<ActionResult<IEnumerable<TeamReadDto>>> GetMyTeams()
+        {
+            var userId = int.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "0");
+            
+            var teams = await _context.TeamMembers
+                .Include(tm => tm.Team)
+                .Include(tm => tm.Team.Owner)
+                .Where(tm => tm.UserId == userId)
+                .Select(tm => new TeamReadDto
+                {
+                    Id = tm.Team.Id,
+                    Name = tm.Team.Name,
+                    Description = tm.Team.Description,
+                    OwnerId = tm.Team.OwnerId,
+                    OwnerName = tm.Team.Owner.Username,
+                    MemberCount = tm.Team.Members.Count
+                })
+                .ToListAsync();
+
+            return Ok(teams);
+        }
+
+        [HttpPost]
+        public async Task<ActionResult<TeamReadDto>> CreateTeam(TeamCreateDto dto)
+        {
+            var userId = int.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "0");
+            
+            var team = new Team
+            {
+                Name = dto.Name,
+                Description = dto.Description,
+                OwnerId = userId
+            };
+
+            _context.Teams.Add(team);
+            await _context.SaveChangesAsync();
+
+            // Add owner as team member
+            var teamMember = new TeamMember
+            {
+                TeamId = team.Id,
+                UserId = userId,
+                Role = TeamRole.Owner
+            };
+
+            _context.TeamMembers.Add(teamMember);
+            await _context.SaveChangesAsync();
+
+            var teamDto = _mapper.Map<TeamReadDto>(team);
+            return CreatedAtAction(nameof(GetTeam), new { id = team.Id }, teamDto);
+        }
+
+        [HttpGet("{id}")]
+        public async Task<ActionResult<TeamReadDto>> GetTeam(int id)
+        {
+            var userId = int.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "0");
+            
+            if (!await _authService.IsTeamMember(userId, id))
+                return Forbid();
+
+            var team = await _context.Teams
+                .Include(t => t.Owner)
+                .Include(t => t.Members)
+                .FirstOrDefaultAsync(t => t.Id == id);
+
+            if (team == null) return NotFound();
+
+            var teamDto = _mapper.Map<TeamReadDto>(team);
+            return Ok(teamDto);
+        }
+
+        [HttpPost("{id}/members")]
+        public async Task<IActionResult> AddMember(int id, AddMemberDto dto)
+        {
+            var userId = int.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "0");
+            
+            if (!await _authService.IsTeamAdmin(userId, id))
+                return Forbid();
+
+            var existingMember = await _context.TeamMembers
+                .FirstOrDefaultAsync(tm => tm.TeamId == id && tm.UserId == dto.UserId);
+
+            if (existingMember != null)
+                return BadRequest("User is already a member of this team");
+
+            var teamMember = new TeamMember
+            {
+                TeamId = id,
+                UserId = dto.UserId,
+                Role = Enum.Parse<TeamRole>(dto.Role)
+            };
+
+            _context.TeamMembers.Add(teamMember);
+            await _context.SaveChangesAsync();
+
+            return Ok();
+        }
+
+        [HttpDelete("{id}/members/{memberId}")]
+        public async Task<IActionResult> RemoveMember(int id, int memberId)
+        {
+            var userId = int.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "0");
+            
+            if (!await _authService.IsTeamAdmin(userId, id))
+                return Forbid();
+
+            var member = await _context.TeamMembers
+                .FirstOrDefaultAsync(tm => tm.TeamId == id && tm.UserId == memberId);
+
+            if (member == null) return NotFound();
+
+            _context.TeamMembers.Remove(member);
+            await _context.SaveChangesAsync();
+
+            return NoContent();
+        }
+    }
+} 

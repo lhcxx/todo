@@ -21,36 +21,75 @@ public class TodoController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<TodoReadDto>>> GetTodos([FromQuery] string status, [FromQuery] DateTime? dueDate, [FromQuery] string sortBy, [FromQuery] string order)
+    public async Task<ActionResult<IEnumerable<TodoReadDto>>> GetTodos(
+        [FromQuery] string? status, 
+        [FromQuery] DateTime? dueDate, 
+        [FromQuery] string? sortBy, 
+        [FromQuery] string? order)
     {
-        // Get current user ID from JWT claims
-        var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
-        if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out int userId))
+        var userId = int.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "0");
+        
+        // Get user's own todos
+        var userTodos = await _context.Todos
+            .Where(t => t.UserId == userId)
+            .ToListAsync();
+        
+        // Get shared todos from teams the user is a member of
+        var teamIds = await _context.TeamMembers
+            .Where(tm => tm.UserId == userId)
+            .Select(tm => tm.TeamId)
+            .ToListAsync();
+        
+        var sharedTodos = await _context.Todos
+            .Where(t => t.TeamId.HasValue && teamIds.Contains(t.TeamId.Value))
+            .ToListAsync();
+        
+        // Combine and filter
+        var allTodos = userTodos.Concat(sharedTodos).DistinctBy(t => t.Id).AsQueryable();
+        
+        // Apply filters
+        if (!string.IsNullOrEmpty(status))
         {
-            return BadRequest("Invalid user information");
+            var statusEnum = Enum.Parse<TodoStatus>(status);
+            allTodos = allTodos.Where(t => t.Status == statusEnum);
         }
         
-        var query = _context.Todos.Where(t => t.UserId == userId);
-        if (!string.IsNullOrEmpty(status))
-            query = query.Where(t => t.Status.ToString() == status);
         if (dueDate.HasValue)
-            query = query.Where(t => t.DueDate.Date == dueDate.Value.Date);
+        {
+            allTodos = allTodos.Where(t => t.DueDate.Date == dueDate.Value.Date);
+        }
+        
+        // Apply sorting
         if (!string.IsNullOrEmpty(sortBy))
         {
             switch (sortBy.ToLower())
             {
                 case "duedate":
-                    query = order == "desc" ? query.OrderByDescending(t => t.DueDate) : query.OrderBy(t => t.DueDate);
+                    allTodos = order?.ToLower() == "desc" ? 
+                        allTodos.OrderByDescending(t => t.DueDate) : 
+                        allTodos.OrderBy(t => t.DueDate);
                     break;
                 case "status":
-                    query = order == "desc" ? query.OrderByDescending(t => t.Status) : query.OrderBy(t => t.Status);
+                    allTodos = order?.ToLower() == "desc" ? 
+                        allTodos.OrderByDescending(t => t.Status) : 
+                        allTodos.OrderBy(t => t.Status);
                     break;
                 case "name":
-                    query = order == "desc" ? query.OrderByDescending(t => t.Name) : query.OrderBy(t => t.Name);
+                    allTodos = order?.ToLower() == "desc" ? 
+                        allTodos.OrderByDescending(t => t.Name) : 
+                        allTodos.OrderBy(t => t.Name);
+                    break;
+                default:
+                    allTodos = allTodos.OrderByDescending(t => t.CreatedAt);
                     break;
             }
         }
-        var todos = await query.ToListAsync();
+        else
+        {
+            allTodos = allTodos.OrderByDescending(t => t.CreatedAt);
+        }
+        
+        var todos = allTodos.ToList();
         return Ok(_mapper.Map<IEnumerable<TodoReadDto>>(todos));
     }
 
@@ -72,35 +111,40 @@ public class TodoController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<TodoReadDto>> CreateTodo(TodoCreateDto dto)
     {
+        var userId = int.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "0");
+        
         var todo = _mapper.Map<Todo>(dto);
         todo.Status = TodoStatus.NotStarted;
-        
-        // Set UserId from JWT claims
-        var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
-        if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out int userId))
-        {
-            return BadRequest("Invalid user information");
-        }
         todo.UserId = userId;
+        todo.CreatedAt = DateTime.UtcNow;
         
         _context.Todos.Add(todo);
         await _context.SaveChangesAsync();
+        
         return CreatedAtAction(nameof(GetTodo), new { id = todo.Id }, _mapper.Map<TodoReadDto>(todo));
     }
 
     [HttpPut("{id}")]
     public async Task<IActionResult> UpdateTodo(int id, TodoUpdateDto dto)
     {
-        // Get current user ID from JWT claims
-        var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
-        if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out int userId))
-        {
-            return BadRequest("Invalid user information");
-        }
-        
-        var todo = await _context.Todos.FirstOrDefaultAsync(t => t.Id == id && t.UserId == userId);
+        var todo = await _context.Todos.FindAsync(id);
         if (todo == null) return NotFound();
-        _mapper.Map(dto, todo);
+        
+        // Only update fields that are provided
+        if (!string.IsNullOrEmpty(dto.Name))
+            todo.Name = dto.Name;
+        if (!string.IsNullOrEmpty(dto.Description))
+            todo.Description = dto.Description;
+        if (dto.DueDate.HasValue)
+            todo.DueDate = dto.DueDate.Value;
+        if (!string.IsNullOrEmpty(dto.Status))
+            todo.Status = Enum.Parse<TodoStatus>(dto.Status);
+        if (dto.Priority.HasValue)
+            todo.Priority = dto.Priority.Value;
+        if (!string.IsNullOrEmpty(dto.Tags))
+            todo.Tags = dto.Tags;
+        
+        todo.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
         return NoContent();
     }
