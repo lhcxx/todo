@@ -23,7 +23,14 @@ public class TodoController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<IEnumerable<TodoReadDto>>> GetTodos([FromQuery] string status, [FromQuery] DateTime? dueDate, [FromQuery] string sortBy, [FromQuery] string order)
     {
-        var query = _context.Todos.AsQueryable();
+        // Get current user ID from JWT claims
+        var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
+        if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out int userId))
+        {
+            return BadRequest("Invalid user information");
+        }
+        
+        var query = _context.Todos.Where(t => t.UserId == userId);
         if (!string.IsNullOrEmpty(status))
             query = query.Where(t => t.Status.ToString() == status);
         if (dueDate.HasValue)
@@ -50,7 +57,14 @@ public class TodoController : ControllerBase
     [HttpGet("{id}")]
     public async Task<ActionResult<TodoReadDto>> GetTodo(int id)
     {
-        var todo = await _context.Todos.FindAsync(id);
+        // Get current user ID from JWT claims
+        var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
+        if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out int userId))
+        {
+            return BadRequest("Invalid user information");
+        }
+        
+        var todo = await _context.Todos.FirstOrDefaultAsync(t => t.Id == id && t.UserId == userId);
         if (todo == null) return NotFound();
         return Ok(_mapper.Map<TodoReadDto>(todo));
     }
@@ -60,7 +74,15 @@ public class TodoController : ControllerBase
     {
         var todo = _mapper.Map<Todo>(dto);
         todo.Status = TodoStatus.NotStarted;
-        // TODO: Set UserId from JWT claims
+        
+        // Set UserId from JWT claims
+        var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
+        if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out int userId))
+        {
+            return BadRequest("Invalid user information");
+        }
+        todo.UserId = userId;
+        
         _context.Todos.Add(todo);
         await _context.SaveChangesAsync();
         return CreatedAtAction(nameof(GetTodo), new { id = todo.Id }, _mapper.Map<TodoReadDto>(todo));
@@ -69,7 +91,14 @@ public class TodoController : ControllerBase
     [HttpPut("{id}")]
     public async Task<IActionResult> UpdateTodo(int id, TodoUpdateDto dto)
     {
-        var todo = await _context.Todos.FindAsync(id);
+        // Get current user ID from JWT claims
+        var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
+        if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out int userId))
+        {
+            return BadRequest("Invalid user information");
+        }
+        
+        var todo = await _context.Todos.FirstOrDefaultAsync(t => t.Id == id && t.UserId == userId);
         if (todo == null) return NotFound();
         _mapper.Map(dto, todo);
         await _context.SaveChangesAsync();
@@ -79,7 +108,14 @@ public class TodoController : ControllerBase
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteTodo(int id)
     {
-        var todo = await _context.Todos.FindAsync(id);
+        // Get current user ID from JWT claims
+        var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
+        if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out int userId))
+        {
+            return BadRequest("Invalid user information");
+        }
+        
+        var todo = await _context.Todos.FirstOrDefaultAsync(t => t.Id == id && t.UserId == userId);
         if (todo == null) return NotFound();
         _context.Todos.Remove(todo);
         await _context.SaveChangesAsync();
