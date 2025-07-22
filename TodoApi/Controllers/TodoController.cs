@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using TodoApi.Data;
 using TodoApi.DTOs;
 using TodoApi.Models;
+using TodoApi.Services;
 using AutoMapper;
 
 [ApiController]
@@ -13,11 +14,13 @@ public class TodoController : ControllerBase
 {
     private readonly AppDbContext _context;
     private readonly IMapper _mapper;
+    private readonly IActivityService _activityService;
 
-    public TodoController(AppDbContext context, IMapper mapper)
+    public TodoController(AppDbContext context, IMapper mapper, IActivityService activityService)
     {
         _context = context;
         _mapper = mapper;
+        _activityService = activityService;
     }
 
     [HttpGet]
@@ -103,7 +106,14 @@ public class TodoController : ControllerBase
             return BadRequest("Invalid user information");
         }
         
-        var todo = await _context.Todos.FirstOrDefaultAsync(t => t.Id == id && t.UserId == userId);
+        // Get todo - either user's own or shared todo from team they're a member of
+        var todo = await _context.Todos
+            .Include(t => t.Team)
+            .FirstOrDefaultAsync(t => t.Id == id && 
+                (t.UserId == userId || 
+                 (t.TeamId.HasValue && _context.TeamMembers
+                     .Any(tm => tm.UserId == userId && tm.TeamId == t.TeamId))));
+        
         if (todo == null) return NotFound();
         return Ok(_mapper.Map<TodoReadDto>(todo));
     }
@@ -118,8 +128,57 @@ public class TodoController : ControllerBase
         todo.UserId = userId;
         todo.CreatedAt = DateTime.UtcNow;
         
+        // Handle shared todos
+        if (dto.TeamId.HasValue)
+        {
+            // Verify user is a member of the team and has appropriate role
+            var teamMember = await _context.TeamMembers
+                .FirstOrDefaultAsync(tm => tm.UserId == userId && tm.TeamId == dto.TeamId.Value);
+            
+            if (teamMember == null)
+            {
+                return Forbid("You are not a member of this team");
+            }
+            
+            // Only Members, Admins, and Owners can create shared todos
+            if (teamMember.Role == TeamRole.Viewer)
+            {
+                return Forbid("Viewers cannot create shared todos. Only Members, Admins, and Owners can create shared todos.");
+            }
+            
+            todo.TeamId = dto.TeamId.Value;
+            todo.IsShared = true;
+        }
+        else
+        {
+            // Personal todo
+            todo.IsShared = false;
+        }
+        
         _context.Todos.Add(todo);
         await _context.SaveChangesAsync();
+        
+        // Log activity
+        if (todo.TeamId.HasValue)
+        {
+            // Team shared todo
+            await _activityService.LogActivityAsync(
+                userId, 
+                ActivityType.TodoCreated, 
+                $"Created shared todo '{todo.Name}' in team", 
+                todo.TeamId, 
+                todo.Id);
+        }
+        else
+        {
+            // Personal todo
+            await _activityService.LogActivityAsync(
+                userId, 
+                ActivityType.TodoCreated, 
+                $"Created personal todo '{todo.Name}'", 
+                null, 
+                todo.Id);
+        }
         
         return CreatedAtAction(nameof(GetTodo), new { id = todo.Id }, _mapper.Map<TodoReadDto>(todo));
     }
@@ -127,8 +186,32 @@ public class TodoController : ControllerBase
     [HttpPut("{id}")]
     public async Task<IActionResult> UpdateTodo(int id, TodoUpdateDto dto)
     {
-        var todo = await _context.Todos.FindAsync(id);
+        var userId = int.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "0");
+        
+        // Get todo - either user's own or shared todo from team they're a member of
+        var todo = await _context.Todos
+            .Include(t => t.Team)
+            .FirstOrDefaultAsync(t => t.Id == id && 
+                (t.UserId == userId || 
+                 (t.TeamId.HasValue && _context.TeamMembers
+                     .Any(tm => tm.UserId == userId && tm.TeamId == t.TeamId))));
+        
         if (todo == null) return NotFound();
+        
+        // Check authorization for shared todos
+        if (todo.TeamId.HasValue && todo.UserId != userId)
+        {
+            // For shared todos, only team admins/owners can modify
+            var userRole = await _context.TeamMembers
+                .Where(tm => tm.UserId == userId && tm.TeamId == todo.TeamId)
+                .Select(tm => tm.Role)
+                .FirstOrDefaultAsync();
+            
+            if (userRole != TeamRole.Admin && userRole != TeamRole.Owner)
+            {
+                return Forbid("Only team admins can modify shared todos");
+            }
+        }
         
         // Only update fields that are provided
         if (!string.IsNullOrEmpty(dto.Name))
@@ -146,21 +229,84 @@ public class TodoController : ControllerBase
         
         todo.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
+        
+        // Log activity
+        if (todo.TeamId.HasValue)
+        {
+            // Team shared todo
+            await _activityService.LogActivityAsync(
+                userId, 
+                ActivityType.TodoUpdated, 
+                $"Updated shared todo '{todo.Name}' in team", 
+                todo.TeamId, 
+                todo.Id);
+        }
+        else
+        {
+            // Personal todo
+            await _activityService.LogActivityAsync(
+                userId, 
+                ActivityType.TodoUpdated, 
+                $"Updated personal todo '{todo.Name}'", 
+                null, 
+                todo.Id);
+        }
+        
         return NoContent();
     }
 
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteTodo(int id)
     {
-        // Get current user ID from JWT claims
-        var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier);
-        if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out int userId))
+        var userId = int.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "0");
+        
+        // Get todo - either user's own or shared todo from team they're a member of
+        var todo = await _context.Todos
+            .Include(t => t.Team)
+            .FirstOrDefaultAsync(t => t.Id == id && 
+                (t.UserId == userId || 
+                 (t.TeamId.HasValue && _context.TeamMembers
+                     .Any(tm => tm.UserId == userId && tm.TeamId == t.TeamId))));
+        
+        if (todo == null) return NotFound();
+        
+        // Check authorization for shared todos
+        if (todo.TeamId.HasValue && todo.UserId != userId)
         {
-            return BadRequest("Invalid user information");
+            // For shared todos, only team admins/owners can delete
+            var userRole = await _context.TeamMembers
+                .Where(tm => tm.UserId == userId && tm.TeamId == todo.TeamId)
+                .Select(tm => tm.Role)
+                .FirstOrDefaultAsync();
+            
+            if (userRole != TeamRole.Admin && userRole != TeamRole.Owner)
+            {
+                return Forbid("Only team admins can delete shared todos");
+            }
         }
         
-        var todo = await _context.Todos.FirstOrDefaultAsync(t => t.Id == id && t.UserId == userId);
-        if (todo == null) return NotFound();
+        // Log activity before deleting
+        if (todo.TeamId.HasValue)
+        {
+            // Team shared todo
+            await _activityService.LogActivityAsync(
+                userId, 
+                ActivityType.TodoDeleted, 
+                $"Deleted shared todo '{todo.Name}' from team", 
+                todo.TeamId, 
+                todo.Id);
+        }
+        else
+        {
+            // Personal todo
+            await _activityService.LogActivityAsync(
+                userId, 
+                ActivityType.TodoDeleted, 
+                $"Deleted personal todo '{todo.Name}'", 
+                null, 
+                todo.Id);
+        }
+        
         _context.Todos.Remove(todo);
         await _context.SaveChangesAsync();
         return NoContent();

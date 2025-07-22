@@ -12,6 +12,17 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
+
+// Add CORS
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll", policy =>
+    {
+        policy.AllowAnyOrigin()
+              .AllowAnyMethod()
+              .AllowAnyHeader();
+    });
+});
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "TodoApi", Version = "v1" });
@@ -80,6 +91,9 @@ builder.Services.AddSignalR();
 // Add Authorization Service
 builder.Services.AddScoped<TodoApi.Services.IAuthorizationService, TodoApi.Services.AuthorizationService>();
 
+// Add Activity Service
+builder.Services.AddScoped<TodoApi.Services.IActivityService, TodoApi.Services.ActivityService>();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -88,6 +102,8 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
+app.UseCors("AllowAll");
 
 app.UseAuthentication();
 app.UseAuthorization();

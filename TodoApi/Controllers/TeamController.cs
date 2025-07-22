@@ -17,12 +17,14 @@ namespace TodoApi.Controllers
         private readonly AppDbContext _context;
         private readonly IMapper _mapper;
         private readonly TodoApi.Services.IAuthorizationService _authService;
+        private readonly IActivityService _activityService;
 
-        public TeamController(AppDbContext context, IMapper mapper, TodoApi.Services.IAuthorizationService authService)
+        public TeamController(AppDbContext context, IMapper mapper, TodoApi.Services.IAuthorizationService authService, IActivityService activityService)
         {
             _context = context;
             _mapper = mapper;
             _authService = authService;
+            _activityService = activityService;
         }
 
         [HttpGet]
@@ -74,6 +76,13 @@ namespace TodoApi.Controllers
             _context.TeamMembers.Add(teamMember);
             await _context.SaveChangesAsync();
 
+            // Log team creation activity
+            await _activityService.LogActivityAsync(
+                userId, 
+                ActivityType.TeamCreated, 
+                $"Created team '{team.Name}'", 
+                team.Id);
+
             var teamDto = _mapper.Map<TeamReadDto>(team);
             return CreatedAtAction(nameof(GetTeam), new { id = team.Id }, teamDto);
         }
@@ -121,6 +130,13 @@ namespace TodoApi.Controllers
             _context.TeamMembers.Add(teamMember);
             await _context.SaveChangesAsync();
 
+            // Log member joined activity
+            await _activityService.LogActivityAsync(
+                userId, 
+                ActivityType.MemberJoined, 
+                $"Added member to team", 
+                id);
+
             return Ok();
         }
 
@@ -136,6 +152,13 @@ namespace TodoApi.Controllers
                 .FirstOrDefaultAsync(tm => tm.TeamId == id && tm.UserId == memberId);
 
             if (member == null) return NotFound();
+
+            // Log member left activity
+            await _activityService.LogActivityAsync(
+                userId, 
+                ActivityType.MemberLeft, 
+                $"Removed member from team", 
+                id);
 
             _context.TeamMembers.Remove(member);
             await _context.SaveChangesAsync();

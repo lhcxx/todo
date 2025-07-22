@@ -85,17 +85,24 @@ namespace TodoApi.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> CreateActivity(Activity activity)
+        public async Task<IActionResult> CreateActivity([FromBody] ActivityCreateDto dto)
         {
             var userId = int.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "0");
             
-            activity.UserId = userId;
-            activity.CreatedAt = DateTime.UtcNow;
+            var activity = new Activity
+            {
+                Type = dto.Type,
+                Description = dto.Description,
+                UserId = userId,
+                TeamId = dto.TeamId,
+                TodoId = dto.TodoId,
+                CreatedAt = DateTime.UtcNow
+            };
 
             _context.Activities.Add(activity);
             await _context.SaveChangesAsync();
 
-            return Ok();
+            return Ok(new { message = "Activity created successfully", activityId = activity.Id });
         }
     }
 } 

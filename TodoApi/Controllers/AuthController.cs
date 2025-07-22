@@ -24,8 +24,13 @@ public class AuthController : ControllerBase
     [HttpPost("register")]
     public async Task<IActionResult> Register(UserRegisterDto dto)
     {
-        if (await _context.Users.AnyAsync(u => u.Username == dto.Username))
-            return BadRequest("Username already exists");
+        // Check if user exists with more detailed logging
+        var existingUser = await _context.Users.FirstOrDefaultAsync(u => u.Username == dto.Username);
+        if (existingUser != null)
+        {
+            return BadRequest($"Username '{dto.Username}' already exists (User ID: {existingUser.Id})");
+        }
+        
         var user = new User
         {
             Username = dto.Username,
@@ -33,7 +38,8 @@ public class AuthController : ControllerBase
         };
         _context.Users.Add(user);
         await _context.SaveChangesAsync();
-        return Ok();
+        
+        return Ok(new { message = "User registered successfully", userId = user.Id, username = user.Username });
     }
 
     [HttpPost("login")]
@@ -44,6 +50,13 @@ public class AuthController : ControllerBase
             return Unauthorized();
         var token = GenerateJwtToken(user);
         return Ok(new { token });
+    }
+
+    [HttpGet("users")]
+    public async Task<IActionResult> GetUsers()
+    {
+        var users = await _context.Users.Select(u => new { u.Id, u.Username }).ToListAsync();
+        return Ok(users);
     }
 
     private string GenerateJwtToken(User user)

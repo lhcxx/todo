@@ -9,6 +9,10 @@ namespace TodoApi.DTOs
         public string Status { get; set; } = string.Empty;
         public int Priority { get; set; }
         public string Tags { get; set; } = string.Empty;
+        public bool IsShared { get; set; }
+        public int? TeamId { get; set; }
+        public string? TeamName { get; set; }
+        public string CreatedBy { get; set; } = string.Empty;
     }
 
     public class TodoCreateDto
@@ -18,6 +22,7 @@ namespace TodoApi.DTOs
         public DateTime DueDate { get; set; }
         public int Priority { get; set; }
         public string Tags { get; set; } = string.Empty;
+        public int? TeamId { get; set; }
     }
 
     public class TodoUpdateDto
