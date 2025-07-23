@@ -137,13 +137,13 @@ public class TodoController : ControllerBase
             
             if (teamMember == null)
             {
-                return Forbid("You are not a member of this team");
+                return BadRequest("You are not a member of this team");
             }
             
             // Only Members, Admins, and Owners can create shared todos
             if (teamMember.Role == TeamRole.Viewer)
             {
-                return Forbid("Viewers cannot create shared todos. Only Members, Admins, and Owners can create shared todos.");
+                return BadRequest("Viewers cannot create shared todos. Only Members, Admins, and Owners can create shared todos.");
             }
             
             todo.TeamId = dto.TeamId.Value;
@@ -209,7 +209,7 @@ public class TodoController : ControllerBase
             
             if (userRole != TeamRole.Admin && userRole != TeamRole.Owner)
             {
-                return Forbid("Only team admins can modify shared todos");
+                return BadRequest("Only team admins can modify shared todos");
             }
         }
         
@@ -281,7 +281,7 @@ public class TodoController : ControllerBase
             
             if (userRole != TeamRole.Admin && userRole != TeamRole.Owner)
             {
-                return Forbid("Only team admins can delete shared todos");
+                return BadRequest("Only team admins can delete shared todos");
             }
         }
         

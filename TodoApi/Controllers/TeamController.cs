@@ -93,7 +93,7 @@ namespace TodoApi.Controllers
             var userId = int.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "0");
             
             if (!await _authService.IsTeamMember(userId, id))
-                return Forbid();
+                return BadRequest("You are not a member of this team");
 
             var team = await _context.Teams
                 .Include(t => t.Owner)
@@ -112,7 +112,7 @@ namespace TodoApi.Controllers
             var userId = int.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "0");
             
             if (!await _authService.IsTeamAdmin(userId, id))
-                return Forbid();
+                return BadRequest("Only team admins can perform this action");
 
             var existingMember = await _context.TeamMembers
                 .FirstOrDefaultAsync(tm => tm.TeamId == id && tm.UserId == dto.UserId);
@@ -146,7 +146,7 @@ namespace TodoApi.Controllers
             var userId = int.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "0");
             
             if (!await _authService.IsTeamAdmin(userId, id))
-                return Forbid();
+                return BadRequest("Only team admins can perform this action");
 
             var member = await _context.TeamMembers
                 .FirstOrDefaultAsync(tm => tm.TeamId == id && tm.UserId == memberId);
