@@ -1,0 +1,78 @@
+name: Test Coverage Report
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+jobs:
+  test-coverage:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+        
+    - name: Restore dependencies
+      run: dotnet restore
+      
+    - name: Build
+      run: dotnet build --no-restore
+      
+    - name: Run tests
+      run: dotnet test --no-build --verbosity normal --logger "console;verbosity=normal"
+      
+    - name: Generate coverage report
+      run: |
+        echo "Generating test coverage report..."
+        dotnet run --project CoverageReportGenerator/CoverageReportGenerator.csproj
+        
+    - name: Update README with coverage badge
+      run: |
+        # Extract pass rate from test results
+        PASS_RATE=$(dotnet test --no-build --verbosity minimal 2>&1 | grep -o "Passed: [0-9]*" | head -1 | grep -o "[0-9]*")
+        TOTAL_TESTS=$(dotnet test --no-build --verbosity minimal 2>&1 | grep -o "Total tests: [0-9]*" | head -1 | grep -o "[0-9]*")
+        
+        if [ -n "$PASS_RATE" ] && [ -n "$TOTAL_TESTS" ]; then
+          PERCENTAGE=$((PASS_RATE * 100 / TOTAL_TESTS))
+          
+          # Create badge URL
+          if [ $PERCENTAGE -ge 80 ]; then
+            COLOR="brightgreen"
+            STATUS="excellent"
+          elif [ $PERCENTAGE -ge 50 ]; then
+            COLOR="yellow"
+            STATUS="good"
+          else
+            COLOR="red"
+            STATUS="needs-improvement"
+          fi
+          
+          BADGE_URL="https://img.shields.io/badge/test%20coverage-${PERCENTAGE}%25-${COLOR}?style=for-the-badge&logo=dotnet"
+          
+          # Update README if it exists
+          if [ -f README.md ]; then
+            # Replace or add coverage badge
+            if grep -q "test coverage" README.md; then
+              sed -i "s|https://img.shields.io/badge/test%20coverage-[0-9]*%25-[a-z]*|${BADGE_URL}|g" README.md
+            else
+              # Add badge after the title
+              sed -i "1a\\\n![Test Coverage](${BADGE_URL})\n" README.md
+            fi
+          fi
+        fi
+        
+    - name: Commit and push changes
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add test-coverage-report.md test-coverage-report.txt
+        git diff --quiet && git diff --staged --quiet || git commit -m "📊 Update test coverage report [skip ci]"
+        git push 
