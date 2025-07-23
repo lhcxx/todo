@@ -66,7 +66,7 @@ Production: https://your-domain.com
 {
   "message": "Error description",
   "statusCode": 400,
-  "timestamp": "2024-01-15T10:30:00Z"
+  "timestamp": "2025-07-24T10:30:00Z"
 }
 ```
 
@@ -292,7 +292,7 @@ Authorization: Bearer <token>
 
 #### Get All Todos
 ```http
-GET /api/todo?status=InProgress&dueDate=2024-01-20&sortBy=dueDate&order=asc
+GET /api/todo?status=InProgress&dueDate=2025-07-24&sortBy=dueDate&order=asc
 Authorization: Bearer <token>
 ```
 
@@ -309,7 +309,7 @@ Authorization: Bearer <token>
     "id": 1,
     "name": "Complete API documentation",
     "description": "Write comprehensive API docs",
-    "dueDate": "2024-01-20T00:00:00Z",
+    "dueDate": "2025-07-24T00:00:00Z",
     "status": "InProgress",
     "priority": 2,
     "tags": "documentation,api",
@@ -333,7 +333,7 @@ Authorization: Bearer <token>
   "id": 1,
   "name": "Complete API documentation",
   "description": "Write comprehensive API docs",
-  "dueDate": "2024-01-20T00:00:00Z",
+  "dueDate": "2025-07-24T00:00:00Z",
   "status": "InProgress",
   "priority": 2,
   "tags": "documentation,api",
@@ -353,7 +353,7 @@ Content-Type: application/json
 {
   "name": "New Todo Item",
   "description": "This is a new todo",
-  "dueDate": "2024-01-25T00:00:00Z",
+  "dueDate": "2025-07-25T00:00:00Z",
   "priority": 2,
   "tags": "important,urgent",
   "teamId": 1
@@ -366,7 +366,7 @@ Content-Type: application/json
   "id": 2,
   "name": "New Todo Item",
   "description": "This is a new todo",
-  "dueDate": "2024-01-25T00:00:00Z",
+  "dueDate": "2025-07-25T00:00:00Z",
   "status": "NotStarted",
   "priority": 2,
   "tags": "important,urgent",
@@ -511,7 +511,7 @@ Authorization: Bearer <token>
 
 #### Get Activities
 ```http
-GET /api/activity?teamId=1&type=TodoCreated&fromDate=2024-01-01
+GET /api/activity?teamId=1&type=TodoCreated&fromDate=2025-07-01
 Authorization: Bearer <token>
 ```
 
@@ -534,7 +534,7 @@ Authorization: Bearer <token>
     "teamName": "Development Team",
     "todoId": 1,
     "todoName": "Complete API documentation",
-    "createdAt": "2024-01-15T10:30:00Z"
+    "createdAt": "2025-07-15T10:30:00Z"
   }
 ]
 ```
@@ -674,7 +674,7 @@ curl -X POST "http://localhost:5050/api/todo" \
   -d '{
     "name": "Implement API",
     "description": "Build REST API endpoints",
-    "dueDate": "2024-01-25T00:00:00Z",
+    "dueDate": "2025-07-25T00:00:00Z",
     "priority": 2,
     "tags": "api,development",
     "teamId": 1
