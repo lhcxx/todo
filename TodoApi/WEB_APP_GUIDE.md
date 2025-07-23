@@ -10,7 +10,7 @@ dotnet run --project TodoApi
 ```
 
 ### 2. Open the Web Application
-Navigate to: `https://localhost:7001/todo-app.html`
+Navigate to: `http://localhost:5050/todo-app.html`
 
 ## Features Overview
 

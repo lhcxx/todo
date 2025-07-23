@@ -271,6 +271,62 @@
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
             gap: 20px;
         }
+
+        /* Modal styles */
+        .modal {
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 0;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 600px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+        }
+
+        .modal-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px 10px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h3 {
+            margin: 0;
+        }
+
+        .close {
+            color: white;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close:hover {
+            opacity: 0.7;
+        }
+
+        .modal-body {
+            padding: 20px;
+        }
+
+        .modal-footer {
+            padding: 20px;
+            border-top: 1px solid #e9ecef;
+            text-align: right;
+        }
     </style>
 </head>
 <body>
@@ -660,10 +716,17 @@
                 return;
             }
 
+            // Convert priority string to integer
+            const priorityMap = {
+                'Low': 0,
+                'Medium': 1,
+                'High': 2
+            };
+
             const todoData = {
                 name: document.getElementById('todoName').value,
                 description: document.getElementById('todoDescription').value,
-                priority: document.getElementById('todoPriority').value,
+                priority: priorityMap[document.getElementById('todoPriority').value],
                 dueDate: document.getElementById('todoDueDate').value,
                 tags: document.getElementById('todoTags').value,
                 teamId: document.getElementById('todoTeamId').value || null
@@ -733,12 +796,19 @@
                 return;
             }
 
+            // Convert priority integer to string
+            const priorityMap = {
+                0: 'Low',
+                1: 'Medium',
+                2: 'High'
+            };
+
             container.innerHTML = todos.map(todo => `
                 <div class="todo-item ${todo.isCompleted ? 'completed' : ''}">
                     <h4>${todo.name}</h4>
                     <p>${todo.description}</p>
                     <div class="todo-meta">
-                        <strong>Priority:</strong> ${todo.priority} | 
+                        <strong>Priority:</strong> ${priorityMap[todo.priority] || todo.priority} | 
                         <strong>Status:</strong> ${todo.status} | 
                         <strong>Due:</strong> ${todo.dueDate ? new Date(todo.dueDate).toLocaleDateString() : 'No due date'}
                         ${todo.teamId ? ` | <strong>Team:</strong> ${todo.teamId}` : ''}
@@ -752,8 +822,99 @@
         }
 
         async function updateTodo(id) {
-            const newName = prompt('Enter new name:');
-            if (!newName) return;
+            // Find the todo in the current list
+            const todos = await getTodos();
+            const todo = todos.find(t => t.id === id);
+            if (!todo) {
+                showStatus('Todo not found!', 'error');
+                return;
+            }
+
+            // Show edit modal
+            showEditModal(todo);
+        }
+
+        function showEditModal(todo) {
+            // Create modal HTML
+            const modalHtml = `
+                <div id="editModal" class="modal" style="display: block;">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3>Edit Todo</h3>
+                            <span class="close" onclick="closeEditModal()">&times;</span>
+                        </div>
+                        <div class="modal-body">
+                            <div class="form-group">
+                                <label>Name:</label>
+                                <input type="text" id="editTodoName" value="${todo.name}">
+                            </div>
+                            <div class="form-group">
+                                <label>Description:</label>
+                                <textarea id="editTodoDescription">${todo.description || ''}</textarea>
+                            </div>
+                            <div class="form-group">
+                                <label>Priority:</label>
+                                <select id="editTodoPriority">
+                                    <option value="Low" ${todo.priority === 'Low' ? 'selected' : ''}>Low</option>
+                                    <option value="Medium" ${todo.priority === 'Medium' ? 'selected' : ''}>Medium</option>
+                                    <option value="High" ${todo.priority === 'High' ? 'selected' : ''}>High</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Status:</label>
+                                <select id="editTodoStatus">
+                                    <option value="NotStarted" ${todo.status === 'NotStarted' ? 'selected' : ''}>Not Started</option>
+                                    <option value="InProgress" ${todo.status === 'InProgress' ? 'selected' : ''}>In Progress</option>
+                                    <option value="Completed" ${todo.status === 'Completed' ? 'selected' : ''}>Completed</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Due Date:</label>
+                                <input type="datetime-local" id="editTodoDueDate" value="${todo.dueDate ? todo.dueDate.slice(0, 16) : ''}">
+                            </div>
+                            <div class="form-group">
+                                <label>Tags:</label>
+                                <input type="text" id="editTodoTags" value="${todo.tags || ''}" placeholder="work, urgent, etc.">
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button class="btn" onclick="closeEditModal()">Cancel</button>
+                            <button class="btn btn-success" onclick="saveTodoEdit(${todo.id})">Save Changes</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // Add modal to page
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+        }
+
+        function closeEditModal() {
+            const modal = document.getElementById('editModal');
+            if (modal) {
+                modal.remove();
+            }
+        }
+
+        async function saveTodoEdit(id) {
+            // Convert priority string to integer
+            const priorityMap = {
+                'Low': 0,
+                'Medium': 1,
+                'High': 2
+            };
+            
+            const priorityValue = priorityMap[document.getElementById('editTodoPriority').value];
+            const dueDateValue = document.getElementById('editTodoDueDate').value;
+            
+            const updateData = {
+                name: document.getElementById('editTodoName').value,
+                description: document.getElementById('editTodoDescription').value,
+                priority: priorityValue,
+                status: document.getElementById('editTodoStatus').value,
+                dueDate: dueDateValue ? new Date(dueDateValue).toISOString() : null,
+                tags: document.getElementById('editTodoTags').value
+            };
 
             try {
                 const response = await fetch(`/api/todo/${id}`, {
@@ -762,17 +923,39 @@
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${token}`
                     },
-                    body: JSON.stringify({ name: newName })
+                    body: JSON.stringify(updateData)
                 });
 
                 if (response.ok) {
                     showStatus('Todo updated successfully!', 'success');
+                    closeEditModal();
                     loadTodos();
                 } else {
-                    showStatus('Failed to update todo!', 'error');
+                    const error = await response.text();
+                    showStatus('Failed to update todo: ' + error, 'error');
                 }
             } catch (error) {
                 showStatus('Error updating todo: ' + error.message, 'error');
+            }
+        }
+
+        async function getTodos() {
+            if (!token) return [];
+
+            try {
+                const response = await fetch('/api/todo', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.ok) {
+                    return await response.json();
+                } else {
+                    return [];
+                }
+            } catch (error) {
+                return [];
             }
         }
 

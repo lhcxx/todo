@@ -105,11 +105,17 @@ if (app.Environment.IsDevelopment())
 
 app.UseCors("AllowAll");
 
+// Add static files middleware
+app.UseStaticFiles();
+
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
 app.MapHub<TodoApi.Hubs.TodoHub>("/todohub");
+
+// Add default route for the main application
+app.MapGet("/", () => Results.Redirect("/todo-app.html"));
 
 app.Run();
 

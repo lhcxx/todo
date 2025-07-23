@@ -18,7 +18,7 @@ This guide will help you test the real-time collaboration features using SignalR
    ```
 
 2. **Open the test page**:
-   Navigate to: `https://localhost:7001/signalr-test.html`
+   Navigate to: `http://localhost:5050/signalr-test.html`
 
 3. **Test real-time collaboration**:
    - Open multiple browser tabs/windows with the test page
@@ -40,15 +40,14 @@ This guide will help you test the real-time collaboration features using SignalR
 
 1. **Get a JWT token**:
    ```bash
-   curl -X POST "https://localhost:7001/api/auth/login" \
+   curl -X POST "http://localhost:5050/api/auth/login" \
      -H "Content-Type: application/json" \
-     -d '{"username": "testuser", "password": "password123"}' \
-     -k
+     -d '{"username": "testuser", "password": "password123"}'
    ```
 
 2. **Create a team todo** (triggers SignalR notification):
    ```bash
-   curl -X POST "https://localhost:7001/api/todo" \
+   curl -X POST "http://localhost:5050/api/todo" \
      -H "Content-Type: application/json" \
      -H "Authorization: Bearer YOUR_TOKEN" \
      -d '{
@@ -57,28 +56,25 @@ This guide will help you test the real-time collaboration features using SignalR
        "priority": "High",
        "dueDate": "2024-12-31T23:59:59Z",
        "teamId": 1
-     }' \
-     -k
+     }'
    ```
 
 3. **Update the todo** (triggers SignalR notification):
    ```bash
-   curl -X PUT "https://localhost:7001/api/todo/TODO_ID" \
+   curl -X PUT "http://localhost:5050/api/todo/TODO_ID" \
      -H "Content-Type: application/json" \
      -H "Authorization: Bearer YOUR_TOKEN" \
      -d '{
        "name": "Updated Real-time Todo",
        "description": "This todo was updated",
        "status": "InProgress"
-     }' \
-     -k
+     }'
    ```
 
 4. **Delete the todo** (triggers SignalR notification):
    ```bash
-   curl -X DELETE "https://localhost:7001/api/todo/TODO_ID" \
-     -H "Authorization: Bearer YOUR_TOKEN" \
-     -k
+   curl -X DELETE "http://localhost:5050/api/todo/TODO_ID" \
+     -H "Authorization: Bearer YOUR_TOKEN"
    ```
 
 ## SignalR Events
