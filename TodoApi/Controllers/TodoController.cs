@@ -1,10 +1,12 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using TodoApi.Data;
 using TodoApi.DTOs;
 using TodoApi.Models;
 using TodoApi.Services;
+using TodoApi.Hubs;
 using AutoMapper;
 
 [ApiController]
@@ -15,12 +17,14 @@ public class TodoController : ControllerBase
     private readonly AppDbContext _context;
     private readonly IMapper _mapper;
     private readonly IActivityService _activityService;
+    private readonly IHubContext<TodoHub> _hubContext;
 
-    public TodoController(AppDbContext context, IMapper mapper, IActivityService activityService)
+    public TodoController(AppDbContext context, IMapper mapper, IActivityService activityService, IHubContext<TodoHub> hubContext)
     {
         _context = context;
         _mapper = mapper;
         _activityService = activityService;
+        _hubContext = hubContext;
     }
 
     [HttpGet]
@@ -168,6 +172,10 @@ public class TodoController : ControllerBase
                 $"Created shared todo '{todo.Name}' in team", 
                 todo.TeamId, 
                 todo.Id);
+            
+            // Send SignalR notification to team
+            var todoDto = _mapper.Map<TodoReadDto>(todo);
+            await _hubContext.Clients.Group($"team_{todo.TeamId}").SendAsync("TodoCreated", todoDto);
         }
         else
         {
@@ -240,6 +248,10 @@ public class TodoController : ControllerBase
                 $"Updated shared todo '{todo.Name}' in team", 
                 todo.TeamId, 
                 todo.Id);
+            
+            // Send SignalR notification to team
+            var todoDto = _mapper.Map<TodoReadDto>(todo);
+            await _hubContext.Clients.Group($"team_{todo.TeamId}").SendAsync("TodoUpdated", todoDto);
         }
         else
         {
@@ -295,6 +307,9 @@ public class TodoController : ControllerBase
                 $"Deleted shared todo '{todo.Name}' from team", 
                 todo.TeamId, 
                 todo.Id);
+            
+            // Send SignalR notification to team
+            await _hubContext.Clients.Group($"team_{todo.TeamId}").SendAsync("TodoDeleted", todo.Id);
         }
         else
         {

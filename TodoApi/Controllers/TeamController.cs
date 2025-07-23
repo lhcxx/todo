@@ -1,10 +1,12 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using TodoApi.Data;
 using TodoApi.DTOs;
 using TodoApi.Models;
 using TodoApi.Services;
+using TodoApi.Hubs;
 using AutoMapper;
 
 namespace TodoApi.Controllers
@@ -15,17 +17,19 @@ namespace TodoApi.Controllers
     public class TeamController : ControllerBase
     {
         private readonly AppDbContext _context;
-        private readonly IMapper _mapper;
-        private readonly TodoApi.Services.IAuthorizationService _authService;
-        private readonly IActivityService _activityService;
+            private readonly IMapper _mapper;
+    private readonly TodoApi.Services.IAuthorizationService _authService;
+    private readonly IActivityService _activityService;
+    private readonly IHubContext<TodoHub> _hubContext;
 
-        public TeamController(AppDbContext context, IMapper mapper, TodoApi.Services.IAuthorizationService authService, IActivityService activityService)
-        {
-            _context = context;
-            _mapper = mapper;
-            _authService = authService;
-            _activityService = activityService;
-        }
+    public TeamController(AppDbContext context, IMapper mapper, TodoApi.Services.IAuthorizationService authService, IActivityService activityService, IHubContext<TodoHub> hubContext)
+    {
+        _context = context;
+        _mapper = mapper;
+        _authService = authService;
+        _activityService = activityService;
+        _hubContext = hubContext;
+    }
 
         [HttpGet]
         public async Task<ActionResult<IEnumerable<TeamReadDto>>> GetMyTeams()
@@ -137,6 +141,17 @@ namespace TodoApi.Controllers
                 $"Added member to team", 
                 id);
 
+            // Send SignalR notification to team
+            var user = await _context.Users.FindAsync(dto.UserId);
+            var memberDto = new TeamMemberDto
+            {
+                UserId = dto.UserId,
+                Username = user?.Username ?? "Unknown",
+                TeamId = id,
+                Role = dto.Role
+            };
+            await _hubContext.Clients.Group($"team_{id}").SendAsync("MemberJoined", memberDto);
+
             return Ok();
         }
 
@@ -159,6 +174,9 @@ namespace TodoApi.Controllers
                 ActivityType.MemberLeft, 
                 $"Removed member from team", 
                 id);
+
+            // Send SignalR notification to team
+            await _hubContext.Clients.Group($"team_{id}").SendAsync("MemberLeft", memberId);
 
             _context.TeamMembers.Remove(member);
             await _context.SaveChangesAsync();

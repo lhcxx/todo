@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SignalR Real-time Collaboration Test</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/6.0.1/signalr.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .container {
+            display: flex;
+            gap: 20px;
+        }
+        .panel {
+            flex: 1;
+            border: 1px solid #ccc;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        .log {
+            height: 300px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 10px;
+            background-color: #f9f9f9;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        input, button {
+            margin: 5px 0;
+            padding: 5px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 3px;
+        }
+        .connected {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .disconnected {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+    <h1>SignalR Real-time Collaboration Test</h1>
+    
+    <div id="status" class="status disconnected">Disconnected</div>
+    
+    <div class="container">
+        <div class="panel">
+            <h3>Connection</h3>
+            <input type="text" id="teamId" placeholder="Team ID" value="1">
+            <button onclick="connect()">Connect</button>
+            <button onclick="disconnect()">Disconnect</button>
+            <button onclick="joinTeam()">Join Team</button>
+            <button onclick="leaveTeam()">Leave Team</button>
+        </div>
+        
+        <div class="panel">
+            <h3>Send Messages</h3>
+            <input type="text" id="todoId" placeholder="Todo ID" value="1">
+            <button onclick="sendTodoUpdated()">Send Todo Updated</button>
+            <button onclick="sendTodoCreated()">Send Todo Created</button>
+            <button onclick="sendTodoDeleted()">Send Todo Deleted</button>
+            <button onclick="sendActivityAdded()">Send Activity Added</button>
+            <button onclick="sendMemberJoined()">Send Member Joined</button>
+            <button onclick="sendMemberLeft()">Send Member Left</button>
+        </div>
+    </div>
+    
+    <div class="panel">
+        <h3>Real-time Events Log</h3>
+        <div id="log" class="log"></div>
+        <button onclick="clearLog()">Clear Log</button>
+    </div>
+
+    <script>
+        let connection;
+        let currentTeamId = '1';
+
+        function log(message) {
+            const logElement = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            logElement.innerHTML += `[${timestamp}] ${message}\n`;
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+
+        function updateStatus(connected) {
+            const statusElement = document.getElementById('status');
+            if (connected) {
+                statusElement.textContent = 'Connected';
+                statusElement.className = 'status connected';
+            } else {
+                statusElement.textContent = 'Disconnected';
+                statusElement.className = 'status disconnected';
+            }
+        }
+
+        async function connect() {
+            try {
+                connection = new signalR.HubConnectionBuilder()
+                    .withUrl("/todohub")
+                    .build();
+
+                // Set up event handlers
+                connection.on("TodoUpdated", (todo) => {
+                    log(`📝 Todo Updated: ${JSON.stringify(todo)}`);
+                });
+
+                connection.on("TodoCreated", (todo) => {
+                    log(`➕ Todo Created: ${JSON.stringify(todo)}`);
+                });
+
+                connection.on("TodoDeleted", (todoId) => {
+                    log(`❌ Todo Deleted: ID ${todoId}`);
+                });
+
+                connection.on("ActivityAdded", (activity) => {
+                    log(`📊 Activity Added: ${JSON.stringify(activity)}`);
+                });
+
+                connection.on("MemberJoined", (member) => {
+                    log(`👤 Member Joined: ${JSON.stringify(member)}`);
+                });
+
+                connection.on("MemberLeft", (userId) => {
+                    log(`👋 Member Left: User ID ${userId}`);
+                });
+
+                await connection.start();
+                updateStatus(true);
+                log("✅ Connected to SignalR hub");
+            } catch (err) {
+                log(`❌ Connection error: ${err}`);
+                updateStatus(false);
+            }
+        }
+
+        async function disconnect() {
+            if (connection) {
+                await connection.stop();
+                updateStatus(false);
+                log("🔌 Disconnected from SignalR hub");
+            }
+        }
+
+        async function joinTeam() {
+            if (connection) {
+                currentTeamId = document.getElementById('teamId').value;
+                await connection.invoke("JoinTeam", currentTeamId);
+                log(`👥 Joined team: ${currentTeamId}`);
+            }
+        }
+
+        async function leaveTeam() {
+            if (connection) {
+                await connection.invoke("LeaveTeam", currentTeamId);
+                log(`👋 Left team: ${currentTeamId}`);
+            }
+        }
+
+        async function sendTodoUpdated() {
+            if (connection) {
+                const todoId = document.getElementById('todoId').value;
+                const todo = {
+                    id: parseInt(todoId),
+                    name: "Updated Todo",
+                    description: "This todo was updated",
+                    isCompleted: false,
+                    priority: "Medium",
+                    dueDate: new Date().toISOString(),
+                    teamId: parseInt(currentTeamId),
+                    createdBy: 1,
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString()
+                };
+                await connection.invoke("TodoUpdated", parseInt(currentTeamId), todo);
+                log(`📤 Sent TodoUpdated for team ${currentTeamId}`);
+            }
+        }
+
+        async function sendTodoCreated() {
+            if (connection) {
+                const todoId = document.getElementById('todoId').value;
+                const todo = {
+                    id: parseInt(todoId),
+                    name: "New Todo",
+                    description: "This is a new todo",
+                    isCompleted: false,
+                    priority: "High",
+                    dueDate: new Date().toISOString(),
+                    teamId: parseInt(currentTeamId),
+                    createdBy: 1,
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString()
+                };
+                await connection.invoke("TodoCreated", parseInt(currentTeamId), todo);
+                log(`📤 Sent TodoCreated for team ${currentTeamId}`);
+            }
+        }
+
+        async function sendTodoDeleted() {
+            if (connection) {
+                const todoId = document.getElementById('todoId').value;
+                await connection.invoke("TodoDeleted", parseInt(currentTeamId), parseInt(todoId));
+                log(`📤 Sent TodoDeleted for team ${currentTeamId}, todo ${todoId}`);
+            }
+        }
+
+        async function sendActivityAdded() {
+            if (connection) {
+                const activity = {
+                    id: 1,
+                    type: "TodoCreated",
+                    description: "A new todo was created",
+                    username: "testuser",
+                    teamId: parseInt(currentTeamId),
+                    teamName: "Test Team",
+                    todoId: parseInt(document.getElementById('todoId').value),
+                    todoName: "Test Todo",
+                    createdAt: new Date().toISOString()
+                };
+                await connection.invoke("ActivityAdded", parseInt(currentTeamId), activity);
+                log(`📤 Sent ActivityAdded for team ${currentTeamId}`);
+            }
+        }
+
+        async function sendMemberJoined() {
+            if (connection) {
+                const member = {
+                    userId: 2,
+                    username: "newmember",
+                    teamId: parseInt(currentTeamId),
+                    role: "Member",
+                    joinedAt: new Date().toISOString()
+                };
+                await connection.invoke("MemberJoined", parseInt(currentTeamId), member);
+                log(`📤 Sent MemberJoined for team ${currentTeamId}`);
+            }
+        }
+
+        async function sendMemberLeft() {
+            if (connection) {
+                await connection.invoke("MemberLeft", parseInt(currentTeamId), 2);
+                log(`📤 Sent MemberLeft for team ${currentTeamId}, user 2`);
+            }
+        }
+
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+        }
+    </script>
+</body>
+</html> 

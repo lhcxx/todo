@@ -1,0 +1,1056 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TODO API Test Application</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/6.0.1/signalr.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            min-height: 600px;
+        }
+
+        .sidebar {
+            background: #f8f9fa;
+            padding: 20px;
+            border-right: 1px solid #e9ecef;
+        }
+
+        .content {
+            padding: 20px;
+        }
+
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #e9ecef;
+            border-radius: 10px;
+            background: white;
+        }
+
+        .section h3 {
+            color: #495057;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e9ecef;
+            border-radius: 5px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: transform 0.2s;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+        }
+
+        .btn-success {
+            background: #28a745;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+        }
+
+        .btn-warning {
+            background: #ffc107;
+            color: #212529;
+        }
+
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            font-weight: 600;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .todo-item {
+            background: #f8f9fa;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+
+        .todo-item.completed {
+            border-left-color: #28a745;
+            opacity: 0.7;
+        }
+
+        .todo-item h4 {
+            margin-bottom: 8px;
+            color: #495057;
+        }
+
+        .todo-item p {
+            color: #6c757d;
+            margin-bottom: 8px;
+        }
+
+        .todo-meta {
+            font-size: 12px;
+            color: #868e96;
+        }
+
+        .team-item {
+            background: #e3f2fd;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            border-left: 4px solid #2196f3;
+        }
+
+        .log {
+            height: 200px;
+            overflow-y: auto;
+            border: 1px solid #e9ecef;
+            padding: 10px;
+            background: #f8f9fa;
+            font-family: monospace;
+            font-size: 12px;
+            border-radius: 5px;
+        }
+
+        .tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e9ecef;
+        }
+
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .tab.active {
+            border-bottom-color: #667eea;
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        .tab:hover {
+            background: #f8f9fa;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .signalr-status {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+
+        .signalr-status.connected {
+            background: #28a745;
+        }
+
+        .signalr-status.disconnected {
+            background: #dc3545;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #6c757d;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 TODO API Test Application</h1>
+            <p>Comprehensive testing interface for all API features</p>
+        </div>
+
+        <div class="main-content">
+            <div class="sidebar">
+                <div class="section">
+                    <h3>🔐 Authentication</h3>
+                    <div id="loginForm">
+                        <div class="form-group">
+                            <label>Username:</label>
+                            <input type="text" id="username" value="testuser">
+                        </div>
+                        <div class="form-group">
+                            <label>Password:</label>
+                            <input type="password" id="password" value="password123">
+                        </div>
+                        <button class="btn" onclick="login()">Login</button>
+                        <button class="btn btn-secondary" onclick="register()">Register</button>
+                    </div>
+                    <div id="userInfo" class="hidden">
+                        <div class="status success">
+                            ✅ Logged in as: <span id="currentUser"></span>
+                        </div>
+                        <button class="btn btn-danger" onclick="logout()">Logout</button>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <h3>📡 SignalR Status</h3>
+                    <div>
+                        <span class="signalr-status disconnected" id="signalrStatus"></span>
+                        <span id="signalrText">Disconnected</span>
+                    </div>
+                    <button class="btn" onclick="connectSignalR()">Connect</button>
+                    <button class="btn btn-secondary" onclick="disconnectSignalR()">Disconnect</button>
+                </div>
+
+                <div class="section">
+                    <h3>👥 Team Management</h3>
+                    <div class="form-group">
+                        <label>Team Name:</label>
+                        <input type="text" id="teamName" placeholder="Enter team name">
+                    </div>
+                    <div class="form-group">
+                        <label>Description:</label>
+                        <textarea id="teamDescription" placeholder="Enter team description"></textarea>
+                    </div>
+                    <button class="btn btn-success" onclick="createTeam()">Create Team</button>
+                    <button class="btn" onclick="loadMyTeams()">Load My Teams</button>
+                </div>
+
+                <div class="section">
+                    <h3>📝 Quick Actions</h3>
+                    <button class="btn" onclick="loadTodos()">Load Todos</button>
+                    <button class="btn" onclick="loadActivities()">Load Activities</button>
+                    <button class="btn" onclick="clearLog()">Clear Log</button>
+                </div>
+            </div>
+
+            <div class="content">
+                <div class="tabs">
+                    <div class="tab active" onclick="showTab('todos')">📋 Todos</div>
+                    <div class="tab" onclick="showTab('teams')">👥 Teams</div>
+                    <div class="tab" onclick="showTab('activities')">📊 Activities</div>
+                    <div class="tab" onclick="showTab('realtime')">⚡ Real-time</div>
+                </div>
+
+                <!-- Todos Tab -->
+                <div id="todos" class="tab-content active">
+                    <div class="section">
+                        <h3>Create New Todo</h3>
+                        <div class="grid">
+                            <div>
+                                <div class="form-group">
+                                    <label>Name:</label>
+                                    <input type="text" id="todoName" placeholder="Enter todo name">
+                                </div>
+                                <div class="form-group">
+                                    <label>Description:</label>
+                                    <textarea id="todoDescription" placeholder="Enter description"></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label>Priority:</label>
+                                    <select id="todoPriority">
+                                        <option value="Low">Low</option>
+                                        <option value="Medium" selected>Medium</option>
+                                        <option value="High">High</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="form-group">
+                                    <label>Due Date:</label>
+                                    <input type="datetime-local" id="todoDueDate">
+                                </div>
+                                <div class="form-group">
+                                    <label>Team (for shared todo):</label>
+                                    <select id="todoTeamId">
+                                        <option value="">Personal Todo</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Tags:</label>
+                                    <input type="text" id="todoTags" placeholder="work, urgent, etc.">
+                                </div>
+                            </div>
+                        </div>
+                        <button class="btn btn-success" onclick="createTodo()">Create Todo</button>
+                    </div>
+
+                    <div class="section">
+                        <h3>My Todos</h3>
+                        <div id="todosList">
+                            <div class="loading">Click "Load Todos" to see your todos</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Teams Tab -->
+                <div id="teams" class="tab-content">
+                    <div class="section">
+                        <h3>My Teams</h3>
+                        <div id="teamsList">
+                            <div class="loading">Click "Load My Teams" to see your teams</div>
+                        </div>
+                    </div>
+
+                    <div class="section">
+                        <h3>Add Team Member</h3>
+                        <div class="grid">
+                            <div>
+                                <div class="form-group">
+                                    <label>Team:</label>
+                                    <select id="addMemberTeamId">
+                                        <option value="">Select a team</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>User ID:</label>
+                                    <input type="number" id="addMemberUserId" placeholder="Enter user ID">
+                                </div>
+                            </div>
+                            <div>
+                                <div class="form-group">
+                                    <label>Role:</label>
+                                    <select id="addMemberRole">
+                                        <option value="Member">Member</option>
+                                        <option value="Admin">Admin</option>
+                                        <option value="Viewer">Viewer</option>
+                                    </select>
+                                </div>
+                                <button class="btn btn-success" onclick="addTeamMember()">Add Member</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Activities Tab -->
+                <div id="activities" class="tab-content">
+                    <div class="section">
+                        <h3>Activity Feed</h3>
+                        <div id="activitiesList">
+                            <div class="loading">Click "Load Activities" to see recent activities</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Real-time Tab -->
+                <div id="realtime" class="tab-content">
+                    <div class="section">
+                        <h3>Real-time Events</h3>
+                        <div class="log" id="realtimeLog">
+                            <div>Connect to SignalR to see real-time events...</div>
+                        </div>
+                    </div>
+
+                    <div class="section">
+                        <h3>Test Real-time Events</h3>
+                        <div class="grid">
+                            <div>
+                                <div class="form-group">
+                                    <label>Team ID:</label>
+                                    <input type="number" id="testTeamId" value="1">
+                                </div>
+                                <button class="btn" onclick="joinTeam()">Join Team</button>
+                                <button class="btn btn-secondary" onclick="leaveTeam()">Leave Team</button>
+                            </div>
+                            <div>
+                                <button class="btn" onclick="sendTestTodoCreated()">Send Todo Created</button>
+                                <button class="btn" onclick="sendTestTodoUpdated()">Send Todo Updated</button>
+                                <button class="btn" onclick="sendTestMemberJoined()">Send Member Joined</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let token = '';
+        let connection = null;
+        let currentTeamId = null;
+
+        // Utility functions
+        function log(message, type = 'info') {
+            const logElement = document.getElementById('realtimeLog');
+            const timestamp = new Date().toLocaleTimeString();
+            const color = type === 'error' ? 'red' : type === 'success' ? 'green' : 'blue';
+            logElement.innerHTML += `<div style="color: ${color}">[${timestamp}] ${message}</div>`;
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+
+        function showStatus(message, type = 'info') {
+            const statusDiv = document.createElement('div');
+            statusDiv.className = `status ${type}`;
+            statusDiv.textContent = message;
+            document.querySelector('.content').insertBefore(statusDiv, document.querySelector('.content').firstChild);
+            setTimeout(() => statusDiv.remove(), 5000);
+        }
+
+        function updateSignalRStatus(connected) {
+            const statusElement = document.getElementById('signalrStatus');
+            const textElement = document.getElementById('signalrText');
+            if (connected) {
+                statusElement.className = 'signalr-status connected';
+                textElement.textContent = 'Connected';
+            } else {
+                statusElement.className = 'signalr-status disconnected';
+                textElement.textContent = 'Disconnected';
+            }
+        }
+
+        // Tab management
+        function showTab(tabName) {
+            // Hide all tab contents
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Remove active class from all tabs
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Show selected tab content
+            document.getElementById(tabName).classList.add('active');
+            
+            // Add active class to clicked tab
+            event.target.classList.add('active');
+        }
+
+        // Authentication
+        async function login() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    token = data.token;
+                    document.getElementById('loginForm').classList.add('hidden');
+                    document.getElementById('userInfo').classList.remove('hidden');
+                    document.getElementById('currentUser').textContent = username;
+                    showStatus('Login successful!', 'success');
+                    loadMyTeams();
+                } else {
+                    showStatus('Login failed!', 'error');
+                }
+            } catch (error) {
+                showStatus('Login error: ' + error.message, 'error');
+            }
+        }
+
+        async function register() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            try {
+                const response = await fetch('/api/auth/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+
+                if (response.ok) {
+                    showStatus('Registration successful! Please login.', 'success');
+                } else {
+                    showStatus('Registration failed!', 'error');
+                }
+            } catch (error) {
+                showStatus('Registration error: ' + error.message, 'error');
+            }
+        }
+
+        function logout() {
+            token = '';
+            document.getElementById('loginForm').classList.remove('hidden');
+            document.getElementById('userInfo').classList.add('hidden');
+            showStatus('Logged out successfully!', 'success');
+        }
+
+        // SignalR
+        async function connectSignalR() {
+            try {
+                connection = new signalR.HubConnectionBuilder()
+                    .withUrl("/todohub")
+                    .build();
+
+                // Set up event handlers
+                connection.on("TodoCreated", (todo) => {
+                    log(`📝 Todo Created: ${todo.name}`, 'success');
+                    loadTodos(); // Refresh todos list
+                });
+
+                connection.on("TodoUpdated", (todo) => {
+                    log(`✏️ Todo Updated: ${todo.name}`, 'success');
+                    loadTodos(); // Refresh todos list
+                });
+
+                connection.on("TodoDeleted", (todoId) => {
+                    log(`❌ Todo Deleted: ID ${todoId}`, 'error');
+                    loadTodos(); // Refresh todos list
+                });
+
+                connection.on("MemberJoined", (member) => {
+                    log(`👤 Member Joined: ${member.username}`, 'success');
+                });
+
+                connection.on("MemberLeft", (userId) => {
+                    log(`👋 Member Left: User ID ${userId}`, 'error');
+                });
+
+                await connection.start();
+                updateSignalRStatus(true);
+                log('✅ Connected to SignalR hub', 'success');
+            } catch (err) {
+                log(`❌ Connection error: ${err}`, 'error');
+                updateSignalRStatus(false);
+            }
+        }
+
+        async function disconnectSignalR() {
+            if (connection) {
+                await connection.stop();
+                updateSignalRStatus(false);
+                log('🔌 Disconnected from SignalR hub', 'error');
+            }
+        }
+
+        async function joinTeam() {
+            if (connection) {
+                currentTeamId = document.getElementById('testTeamId').value;
+                await connection.invoke("JoinTeam", currentTeamId);
+                log(`👥 Joined team: ${currentTeamId}`, 'success');
+            }
+        }
+
+        async function leaveTeam() {
+            if (connection && currentTeamId) {
+                await connection.invoke("LeaveTeam", currentTeamId);
+                log(`👋 Left team: ${currentTeamId}`, 'error');
+                currentTeamId = null;
+            }
+        }
+
+        // Todo management
+        async function createTodo() {
+            if (!token) {
+                showStatus('Please login first!', 'error');
+                return;
+            }
+
+            const todoData = {
+                name: document.getElementById('todoName').value,
+                description: document.getElementById('todoDescription').value,
+                priority: document.getElementById('todoPriority').value,
+                dueDate: document.getElementById('todoDueDate').value,
+                tags: document.getElementById('todoTags').value,
+                teamId: document.getElementById('todoTeamId').value || null
+            };
+
+            try {
+                const response = await fetch('/api/todo', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(todoData)
+                });
+
+                if (response.ok) {
+                    const todo = await response.json();
+                    showStatus('Todo created successfully!', 'success');
+                    loadTodos();
+                    clearTodoForm();
+                } else {
+                    const error = await response.text();
+                    showStatus('Failed to create todo: ' + error, 'error');
+                }
+            } catch (error) {
+                showStatus('Error creating todo: ' + error.message, 'error');
+            }
+        }
+
+        function clearTodoForm() {
+            document.getElementById('todoName').value = '';
+            document.getElementById('todoDescription').value = '';
+            document.getElementById('todoPriority').value = 'Medium';
+            document.getElementById('todoDueDate').value = '';
+            document.getElementById('todoTags').value = '';
+            document.getElementById('todoTeamId').value = '';
+        }
+
+        async function loadTodos() {
+            if (!token) {
+                showStatus('Please login first!', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/todo', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.ok) {
+                    const todos = await response.json();
+                    displayTodos(todos);
+                } else {
+                    showStatus('Failed to load todos!', 'error');
+                }
+            } catch (error) {
+                showStatus('Error loading todos: ' + error.message, 'error');
+            }
+        }
+
+        function displayTodos(todos) {
+            const container = document.getElementById('todosList');
+            if (todos.length === 0) {
+                container.innerHTML = '<div class="loading">No todos found</div>';
+                return;
+            }
+
+            container.innerHTML = todos.map(todo => `
+                <div class="todo-item ${todo.isCompleted ? 'completed' : ''}">
+                    <h4>${todo.name}</h4>
+                    <p>${todo.description}</p>
+                    <div class="todo-meta">
+                        <strong>Priority:</strong> ${todo.priority} | 
+                        <strong>Status:</strong> ${todo.status} | 
+                        <strong>Due:</strong> ${todo.dueDate ? new Date(todo.dueDate).toLocaleDateString() : 'No due date'}
+                        ${todo.teamId ? ` | <strong>Team:</strong> ${todo.teamId}` : ''}
+                    </div>
+                    <div style="margin-top: 10px;">
+                        <button class="btn btn-warning" onclick="updateTodo(${todo.id})">Edit</button>
+                        <button class="btn btn-danger" onclick="deleteTodo(${todo.id})">Delete</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function updateTodo(id) {
+            const newName = prompt('Enter new name:');
+            if (!newName) return;
+
+            try {
+                const response = await fetch(`/api/todo/${id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ name: newName })
+                });
+
+                if (response.ok) {
+                    showStatus('Todo updated successfully!', 'success');
+                    loadTodos();
+                } else {
+                    showStatus('Failed to update todo!', 'error');
+                }
+            } catch (error) {
+                showStatus('Error updating todo: ' + error.message, 'error');
+            }
+        }
+
+        async function deleteTodo(id) {
+            if (!confirm('Are you sure you want to delete this todo?')) return;
+
+            try {
+                const response = await fetch(`/api/todo/${id}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.ok) {
+                    showStatus('Todo deleted successfully!', 'success');
+                    loadTodos();
+                } else {
+                    showStatus('Failed to delete todo!', 'error');
+                }
+            } catch (error) {
+                showStatus('Error deleting todo: ' + error.message, 'error');
+            }
+        }
+
+        // Team management
+        async function createTeam() {
+            if (!token) {
+                showStatus('Please login first!', 'error');
+                return;
+            }
+
+            const teamData = {
+                name: document.getElementById('teamName').value,
+                description: document.getElementById('teamDescription').value
+            };
+
+            try {
+                const response = await fetch('/api/team', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(teamData)
+                });
+
+                if (response.ok) {
+                    const team = await response.json();
+                    showStatus('Team created successfully!', 'success');
+                    loadMyTeams();
+                    clearTeamForm();
+                } else {
+                    const error = await response.text();
+                    showStatus('Failed to create team: ' + error, 'error');
+                }
+            } catch (error) {
+                showStatus('Error creating team: ' + error.message, 'error');
+            }
+        }
+
+        function clearTeamForm() {
+            document.getElementById('teamName').value = '';
+            document.getElementById('teamDescription').value = '';
+        }
+
+        async function loadMyTeams() {
+            if (!token) {
+                showStatus('Please login first!', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/team', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.ok) {
+                    const teams = await response.json();
+                    displayTeams(teams);
+                    updateTeamSelects(teams);
+                } else {
+                    showStatus('Failed to load teams!', 'error');
+                }
+            } catch (error) {
+                showStatus('Error loading teams: ' + error.message, 'error');
+            }
+        }
+
+        function displayTeams(teams) {
+            const container = document.getElementById('teamsList');
+            if (teams.length === 0) {
+                container.innerHTML = '<div class="loading">No teams found</div>';
+                return;
+            }
+
+            container.innerHTML = teams.map(team => `
+                <div class="team-item">
+                    <h4>${team.name}</h4>
+                    <p>${team.description}</p>
+                    <div class="todo-meta">
+                        <strong>Owner:</strong> ${team.ownerName} | 
+                        <strong>Members:</strong> ${team.memberCount}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function updateTeamSelects(teams) {
+            const todoTeamSelect = document.getElementById('todoTeamId');
+            const addMemberTeamSelect = document.getElementById('addMemberTeamId');
+            
+            // Clear existing options except the first one
+            todoTeamSelect.innerHTML = '<option value="">Personal Todo</option>';
+            addMemberTeamSelect.innerHTML = '<option value="">Select a team</option>';
+            
+            teams.forEach(team => {
+                todoTeamSelect.innerHTML += `<option value="${team.id}">${team.name}</option>`;
+                addMemberTeamSelect.innerHTML += `<option value="${team.id}">${team.name}</option>`;
+            });
+        }
+
+        async function addTeamMember() {
+            if (!token) {
+                showStatus('Please login first!', 'error');
+                return;
+            }
+
+            const teamId = document.getElementById('addMemberTeamId').value;
+            const userId = document.getElementById('addMemberUserId').value;
+            const role = document.getElementById('addMemberRole').value;
+
+            if (!teamId || !userId) {
+                showStatus('Please select a team and enter a user ID!', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/team/${teamId}/members`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        teamId: parseInt(teamId),
+                        userId: parseInt(userId),
+                        role: role
+                    })
+                });
+
+                if (response.ok) {
+                    showStatus('Team member added successfully!', 'success');
+                } else {
+                    const error = await response.text();
+                    showStatus('Failed to add team member: ' + error, 'error');
+                }
+            } catch (error) {
+                showStatus('Error adding team member: ' + error.message, 'error');
+            }
+        }
+
+        // Activity management
+        async function loadActivities() {
+            if (!token) {
+                showStatus('Please login first!', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/activity', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.ok) {
+                    const activities = await response.json();
+                    displayActivities(activities);
+                } else {
+                    showStatus('Failed to load activities!', 'error');
+                }
+            } catch (error) {
+                showStatus('Error loading activities: ' + error.message, 'error');
+            }
+        }
+
+        function displayActivities(activities) {
+            const container = document.getElementById('activitiesList');
+            if (activities.length === 0) {
+                container.innerHTML = '<div class="loading">No activities found</div>';
+                return;
+            }
+
+            container.innerHTML = activities.map(activity => `
+                <div class="todo-item">
+                    <h4>${activity.type}</h4>
+                    <p>${activity.description}</p>
+                    <div class="todo-meta">
+                        <strong>User:</strong> ${activity.username} | 
+                        <strong>Time:</strong> ${new Date(activity.createdAt).toLocaleString()}
+                        ${activity.teamName ? ` | <strong>Team:</strong> ${activity.teamName}` : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Test functions for real-time events
+        async function sendTestTodoCreated() {
+            if (connection && currentTeamId) {
+                const todo = {
+                    id: Math.floor(Math.random() * 1000),
+                    name: "Test Todo Created",
+                    description: "This is a test todo created via SignalR",
+                    isCompleted: false,
+                    priority: "Medium",
+                    dueDate: new Date().toISOString(),
+                    teamId: parseInt(currentTeamId),
+                    createdBy: 1,
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString()
+                };
+                await connection.invoke("TodoCreated", parseInt(currentTeamId), todo);
+                log(`📤 Sent test TodoCreated for team ${currentTeamId}`, 'success');
+            } else {
+                log('❌ Not connected or no team selected', 'error');
+            }
+        }
+
+        async function sendTestTodoUpdated() {
+            if (connection && currentTeamId) {
+                const todo = {
+                    id: Math.floor(Math.random() * 1000),
+                    name: "Test Todo Updated",
+                    description: "This is a test todo updated via SignalR",
+                    isCompleted: false,
+                    priority: "High",
+                    dueDate: new Date().toISOString(),
+                    teamId: parseInt(currentTeamId),
+                    createdBy: 1,
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString()
+                };
+                await connection.invoke("TodoUpdated", parseInt(currentTeamId), todo);
+                log(`📤 Sent test TodoUpdated for team ${currentTeamId}`, 'success');
+            } else {
+                log('❌ Not connected or no team selected', 'error');
+            }
+        }
+
+        async function sendTestMemberJoined() {
+            if (connection && currentTeamId) {
+                const member = {
+                    userId: Math.floor(Math.random() * 100),
+                    username: "testmember",
+                    teamId: parseInt(currentTeamId),
+                    role: "Member"
+                };
+                await connection.invoke("MemberJoined", parseInt(currentTeamId), member);
+                log(`📤 Sent test MemberJoined for team ${currentTeamId}`, 'success');
+            } else {
+                log('❌ Not connected or no team selected', 'error');
+            }
+        }
+
+        function clearLog() {
+            document.getElementById('realtimeLog').innerHTML = '<div>Log cleared...</div>';
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set default due date to tomorrow
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            document.getElementById('todoDueDate').value = tomorrow.toISOString().slice(0, 16);
+        });
+    </script>
+</body>
+</html> 
