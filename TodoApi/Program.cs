@@ -113,6 +113,9 @@ app.MapHub<TodoApi.Hubs.TodoHub>("/todohub");
 
 app.Run();
 
+// Make Program class accessible for testing
+public partial class Program { }
+
 record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
 {
     public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);

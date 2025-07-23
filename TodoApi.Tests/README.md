@@ -4,11 +4,15 @@ This guide explains how to test real-time features using SignalR in your TodoApi
 
 ## Overview
 
-The test suite covers three main areas:
+The test suite covers seven main areas:
 
 1. **SignalR Tests** - Direct SignalR hub testing
 2. **Integration Tests** - End-to-end API to SignalR testing
 3. **Performance Tests** - Load testing and performance validation
+4. **E2E Tests** - Comprehensive end-to-end feature testing
+5. **Unit Tests** - Individual service and controller testing
+6. **Validation Tests** - Input validation and error handling
+7. **Stress Tests** - High-load and concurrent access testing
 
 ## Test Structure
 
@@ -43,6 +47,39 @@ Performance and load testing:
 - Memory usage monitoring
 - Connection resilience
 
+### E2ETests.cs
+Comprehensive end-to-end testing:
+- Complete authentication workflows
+- Full CRUD operations for todos, teams, and activities
+- Real-time notification workflows
+- Multi-client scenarios
+- Authorization and security testing
+- Data integrity validation
+
+### UnitTests.cs
+Unit testing of individual components:
+- Service layer testing (AuthorizationService, ActivityService)
+- Controller testing with mocked dependencies
+- Database query testing
+- JWT token generation and validation
+- Business logic validation
+
+### ValidationTests.cs
+Input validation and error handling:
+- Invalid data handling
+- Authentication and authorization errors
+- Database constraint violations
+- SignalR connection errors
+- Edge case testing
+
+### StressTests.cs
+High-load and concurrent access testing:
+- Concurrent request handling
+- Memory usage under load
+- Database connection pool testing
+- SignalR message throughput
+- Error recovery scenarios
+
 ## Running the Tests
 
 ### Prerequisites
@@ -70,6 +107,18 @@ dotnet test TodoApi.Tests --filter "FullyQualifiedName~IntegrationTests"
 
 # Run only performance tests
 dotnet test TodoApi.Tests --filter "FullyQualifiedName~PerformanceTests"
+
+# Run only E2E tests
+dotnet test TodoApi.Tests --filter "FullyQualifiedName~E2ETests"
+
+# Run only unit tests
+dotnet test TodoApi.Tests --filter "FullyQualifiedName~UnitTests"
+
+# Run only validation tests
+dotnet test TodoApi.Tests --filter "FullyQualifiedName~ValidationTests"
+
+# Run only stress tests
+dotnet test TodoApi.Tests --filter "FullyQualifiedName~StressTests"
 ```
 
 ### Run Individual Tests

@@ -16,6 +16,7 @@ namespace TodoApi.Tests
         protected WebApplicationFactory<Program> Factory { get; }
         protected AppDbContext DbContext { get; }
         protected HttpClient Client { get; }
+        private IServiceScope _scope;
 
         protected TestBase()
         {
@@ -36,28 +37,20 @@ namespace TodoApi.Tests
                         {
                             options.UseInMemoryDatabase($"TestDb_{Guid.NewGuid()}");
                         });
-
-                        // Create a new service provider
-                        var serviceProvider = services.BuildServiceProvider();
-
-                        // Create a scope to obtain a reference to the database context
-                        using var scope = serviceProvider.CreateScope();
-                        var scopedServices = scope.ServiceProvider;
-                        var db = scopedServices.GetRequiredService<AppDbContext>();
-
-                        // Ensure the database is created
-                        db.Database.EnsureCreated();
-
-                        // Seed test data
-                        SeedTestData(db);
                     });
                 });
 
             Client = Factory.CreateClient();
             
-            // Get the DbContext from the factory
-            using var scope = Factory.Services.CreateScope();
-            DbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            // Get the DbContext from the factory and seed data
+            _scope = Factory.Services.CreateScope();
+            DbContext = _scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            
+            // Ensure the database is created
+            DbContext.Database.EnsureCreated();
+
+            // Seed test data
+            SeedTestData(DbContext);
         }
 
         protected virtual void SeedTestData(AppDbContext context)
@@ -100,7 +93,7 @@ namespace TodoApi.Tests
             return new JwtSecurityTokenHandler().WriteToken(token);
         }
 
-        protected async Task<SignalRClient> CreateSignalRClientAsync(string token = null)
+        protected async Task<SignalRClient> CreateSignalRClientAsync(string? token = null)
         {
             var hubUrl = new Uri(Factory.Server.BaseAddress, "/todohub");
             var connection = new HubConnectionBuilder()
@@ -110,6 +103,8 @@ namespace TodoApi.Tests
                     {
                         options.AccessTokenProvider = () => Task.FromResult(token);
                     }
+                    // Use the test server's HTTP client
+                    options.HttpMessageHandlerFactory = _ => Factory.Server.CreateHandler();
                 })
                 .Build();
 
@@ -130,6 +125,7 @@ namespace TodoApi.Tests
         public void Dispose()
         {
             Client?.Dispose();
+            _scope?.Dispose();
             Factory?.Dispose();
         }
     }

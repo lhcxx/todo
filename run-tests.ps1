@@ -3,11 +3,11 @@
 
 param(
     [Parameter(Mandatory=$false)]
-    [ValidateSet("all", "signalr", "integration", "performance")]
+    [ValidateSet("all", "signalr", "integration", "performance", "e2e", "unit", "validation", "stress")]
     [string]$TestType = "all",
     
     [Parameter(Mandatory=$false)]
-    [switch]$Verbose,
+    [switch]$Detailed,
     
     [Parameter(Mandatory=$false)]
     [switch]$BuildOnly
@@ -31,7 +31,7 @@ if ($BuildOnly) {
 }
 
 # Run tests based on type
-switch ($TestType) {
+switch ($TestType.ToLower()) {
     "all" {
         Write-Host "Running all SignalR tests..." -ForegroundColor Yellow
         $filter = ""
@@ -48,6 +48,27 @@ switch ($TestType) {
         Write-Host "Running performance tests..." -ForegroundColor Yellow
         $filter = "--filter `"FullyQualifiedName~PerformanceTests`""
     }
+    "e2e" {
+        Write-Host "Running E2E tests..." -ForegroundColor Yellow
+        $filter = "--filter `"FullyQualifiedName~E2ETests`""
+    }
+    "unit" {
+        Write-Host "Running unit tests..." -ForegroundColor Yellow
+        $filter = "--filter `"FullyQualifiedName~UnitTests`""
+    }
+    "validation" {
+        Write-Host "Running validation tests..." -ForegroundColor Yellow
+        $filter = "--filter `"FullyQualifiedName~ValidationTests`""
+    }
+    "stress" {
+        Write-Host "Running stress tests..." -ForegroundColor Yellow
+        $filter = "--filter `"FullyQualifiedName~StressTests`""
+    }
+    default {
+        Write-Host "Invalid test type: $TestType" -ForegroundColor Red
+        Write-Host "Valid options: all, signalr, integration, performance" -ForegroundColor Yellow
+        exit 1
+    }
 }
 
 # Build test command
@@ -55,7 +76,7 @@ $testCommand = "dotnet test TodoApi.Tests"
 if ($filter) {
     $testCommand += " $filter"
 }
-if ($Verbose) {
+if ($Detailed) {
     $testCommand += " --verbosity detailed"
 }
 

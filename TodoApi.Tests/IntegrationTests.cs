@@ -4,6 +4,7 @@ using TodoApi.DTOs;
 using TodoApi.Models;
 using System.Text;
 using System.Text.Json;
+using Xunit;
 
 namespace TodoApi.Tests
 {
@@ -170,6 +171,7 @@ namespace TodoApi.Tests
             // Add member via API
             var addMemberDto = new AddMemberDto
             {
+                TeamId = team.Id,
                 UserId = 999, // New user ID
                 Role = "Member"
             };
@@ -206,6 +208,7 @@ namespace TodoApi.Tests
             // Add a member first
             var addMemberDto = new AddMemberDto
             {
+                TeamId = team.Id,
                 UserId = 888,
                 Role = "Member"
             };

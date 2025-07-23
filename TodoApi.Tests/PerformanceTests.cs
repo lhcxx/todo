@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.SignalR.Client;
 using TodoApi.DTOs;
 using TodoApi.Models;
 using System.Diagnostics;
+using Xunit;
 
 namespace TodoApi.Tests
 {

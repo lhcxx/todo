@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.SignalR.Client;
 using TodoApi.DTOs;
 using TodoApi.Models;
 using System.Text.Json;
+using Xunit;
 
 namespace TodoApi.Tests
 {
@@ -92,7 +93,7 @@ namespace TodoApi.Tests
             // Arrange
             var user = await GetTestUserAsync();
             var team = await GetTestTeamAsync();
-            var token = GenerateJwtToken(token);
+            var token = GenerateJwtToken(user);
             var signalRClient = await CreateSignalRClientAsync(token);
 
             // Join the team
